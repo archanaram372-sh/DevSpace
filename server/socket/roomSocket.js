@@ -1,5 +1,4 @@
-module.exports = function(io) {
-
+export default function roomSocket(io) {
   const rooms = {};
 
   io.on("connection", (socket) => {
@@ -36,5 +35,4 @@ module.exports = function(io) {
     });
 
   });
-
-};
+}
