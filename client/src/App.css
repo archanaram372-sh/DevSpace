@@ -202,9 +202,10 @@ body, html {
 }
 
 /* CHAT SECTION */
+/* CHAT AREA */
 .chat-section {
-  width: 280px;
-  background: #252526;
+  width: 300px;
+  background: #1e1e1e;
   border-left: 1px solid #333;
   display: flex;
   flex-direction: column;
@@ -212,53 +213,113 @@ body, html {
 
 .chat-header {
   padding: 15px;
-  background: #2d2d2d;
-  font-weight: bold;
+  background: #252526;
   border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.online-count {
+  font-size: 10px;
+  background: #333;
+  padding: 2px 6px;
+  border-radius: 10px;
+  color: #888;
 }
 
 .message-list {
   flex: 1;
-  padding: 10px;
+  padding: 15px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
+/* MESSAGE BUBBLES */
 .message-bubble {
-  background: #37373d;
-  padding: 8px 12px;
-  border-radius: 6px;
+  max-width: 85%;
+  background: #2d2d2d;
+  padding: 10px;
+  border-radius: 8px;
+  border-bottom-left-radius: 2px;
+  align-self: flex-start;
+}
+
+.message-bubble.own-msg {
+  background: #005a9e; /* Visual distinction for your own messages */
+  align-self: flex-end;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 2px;
+}
+
+.msg-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 4px;
+  gap: 10px;
+}
+
+.msg-sender { color: #4ade80; font-weight: bold; }
+.own-msg .msg-sender { color: #fff; }
+.msg-time { color: #888; }
+.own-msg .msg-time { color: #a5d8ff; }
+
+.msg-text {
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
 }
 
-.chat-input-area {
-  padding: 15px;
-  display: flex;
-  gap: 5px;
-  background: #2d2d2d;
+/* TAGGING/MENTION STYLE */
+.mention-tag {
+  color: #ffda6a; /* Gold color for mentions */
+  font-weight: bold;
+  cursor: pointer;
 }
 
-.chat-input-area input {
+/* INPUT AREA */
+.chat-input-area {
+  padding: 15px;
+  background: #252526;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #333;
+}
+
+.input-wrapper {
   flex: 1;
   background: #1e1e1e;
   border: 1px solid #444;
-  color: white;
-  padding: 8px;
   border-radius: 4px;
+  padding: 2px 8px;
 }
 
-.chat-input-area button {
+.chat-input-area input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 8px 0;
+  outline: none;
+}
+
+.send-btn {
   background: #0e639c;
   color: white;
   border: none;
-  padding: 0 15px;
   border-radius: 4px;
+  padding: 0 12px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
 }
+
+.send-btn:hover { background: #1177bb; }
 
 /* --- RESPONSIVENESS --- */
 
