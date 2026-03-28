@@ -9,7 +9,6 @@ import admin from "./firebaseAdmin.js";
 import { analyzeCode } from "./ai_module.js";
 import reposRoutes from "./routes/repos.js";
 import usersRoutes from "./routes/users.js";
-import discussionsRoutes from "./routes/discussions.js";
 
 dotenv.config({ path: ".env.api" });
 
@@ -31,7 +30,6 @@ app.post("/analyze", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/repos", reposRoutes);
 app.use("/api/users", usersRoutes);
-app.use("/api/discussions", discussionsRoutes);
 
 // create http server
 const server = http.createServer(app);

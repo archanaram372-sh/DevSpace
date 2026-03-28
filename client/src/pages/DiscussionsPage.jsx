@@ -1,11 +1,18 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MessageSquareText, Plus, LogOut, CheckSquare, Settings2, Trash2 } from "lucide-react";
+import { MessageSquareText, Plus, CheckSquare, Settings2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getSocket, connectSocket, disconnectSocket } from "../services/socketService";
+import { db } from "../firebase";
+import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { fetchAllUsers } from "../services/userService";
-import { fetchDiscussions, createDiscussion, terminateDiscussion } from "../services/discussionService";
 import { getCurrentUser } from "../services/authService";
 import "./DiscussionsPage.css";
+
+const TEAMS = [
+  { id: "team-a", name: "Team A" },
+  { id: "team-b", name: "Team B" },
+  { id: "team-c", name: "Team C" },
+  { id: "team-d", name: "Team D" }
+];
 
 export default function DiscussionsPage() {
   const navigate = useNavigate();
@@ -15,8 +22,11 @@ export default function DiscussionsPage() {
   const [platformUsers, setPlatformUsers] = useState([]);
   const [discussions, setDiscussions] = useState([]);
   const [activeDiscussion, setActiveDiscussion] = useState(null);
-  const [messages, setMessages] = useState({}); // { discussionId: [messages] }
+  const [messages, setMessages] = useState([]); 
   
+  // Team 
+  const [activeTeamId, setActiveTeamId] = useState(TEAMS[0].id);
+
   // UI State
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -24,73 +34,93 @@ export default function DiscussionsPage() {
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [chatInput, setChatInput] = useState("");
 
-  const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Scroll to bottom when messages update for active discussion
+  // Scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeDiscussion]);
 
+  // Init User & Platform Directory
   useEffect(() => {
     const initData = async () => {
       const currentUser = getCurrentUser();
-      const token = localStorage.getItem("userToken");
-      if (!currentUser || !token) {
+      if (!currentUser) {
         navigate("/");
         return;
       }
       setUser(currentUser);
 
       try {
-        const [usersRes, discussionsRes] = await Promise.all([
-          fetchAllUsers(),
-          fetchDiscussions(),
-        ]);
-        
-        // Exclude self from selection
+        const usersRes = await fetchAllUsers();
         setPlatformUsers(usersRes.filter(u => u.uid !== currentUser.uid));
-        setDiscussions(discussionsRes);
       } catch (err) {
-        console.error("Failed to fetch discussion data:", err);
-      } finally {
-        setLoading(false);
-      }
-
-      // Initialize Socket
-      const socket = connectSocket(token);
-      socketRef.current = socket;
-
-      socket.on("receive-message", ({ userName, message, timestamp, roomId }) => {
-        setMessages(prev => ({
-          ...prev,
-          [roomId]: [...(prev[roomId] || []), { userName, message, timestamp }]
-        }));
-      });
-
-      return () => {
-        disconnectSocket();
-      };
+        console.error("Failed to fetch user directory:", err);
+      } 
     };
     initData();
   }, [navigate]);
 
+  // Firestore: Listen to Discussions for active Team
   useEffect(() => {
-    if (activeDiscussion && socketRef.current) {
-        // We multiplex discussions by telling socket to join this thread's room
-        socketRef.current.emit("join-room", activeDiscussion.id);
-    }
-  }, [activeDiscussion]);
+    if (!user) return;
+    setLoading(true);
+
+    const q = query(
+      collection(db, "teams", activeTeamId, "discussions"),
+      orderBy("createdAt", "desc")
+    );
+    
+    const unsub = onSnapshot(q, (snapshot) => {
+      const threads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Filter for discussions user is participant or creator
+      const myThreads = threads.filter(d => 
+         d.creatorId === user.uid || (d.participants && d.participants.includes(user.uid)) || true // Showing all for transparency in MVP
+      );
+      setDiscussions(myThreads);
+      setLoading(false);
+      
+      // Update active discussion reference if modified
+      if (activeDiscussion) {
+        const updatedActive = myThreads.find(t => t.id === activeDiscussion.id);
+        if (updatedActive) setActiveDiscussion(updatedActive);
+      }
+    });
+
+    return () => unsub();
+  }, [activeTeamId, user]);
+
+  // Firestore: Listen to Messages for Active Discussion
+  useEffect(() => {
+    if (!activeDiscussion) return;
+
+    const messagesRef = collection(db, "teams", activeTeamId, "discussions", activeDiscussion.id, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(msgs);
+    });
+
+    return () => unsub();
+  }, [activeDiscussion, activeTeamId]);
+
 
   const handleCreateDiscussion = async () => {
-    if (!newTopic.trim()) return;
+    if (!newTopic.trim() || !user) return;
     try {
-      const newD = await createDiscussion(newTopic, selectedParticipants);
-      setDiscussions([newD, ...discussions]);
+      const docRef = await addDoc(collection(db, "teams", activeTeamId, "discussions"), {
+        topic: newTopic,
+        creatorId: user.uid,
+        participants: selectedParticipants, // array of UIDs
+        status: "active",
+        createdAt: serverTimestamp()
+      });
+      
       setShowNewModal(false);
       setNewTopic("");
       setSelectedParticipants([]);
-      setActiveDiscussion(newD);
+      setActiveDiscussion({ id: docRef.id, topic: newTopic, status: "active", participants: selectedParticipants, creatorId: user.uid });
     } catch (err) {
       console.error("Failed to create discussion", err);
     }
@@ -102,21 +132,31 @@ export default function DiscussionsPage() {
     if (!confirmTerm) return;
 
     try {
-      const updated = await terminateDiscussion(activeDiscussion.id);
-      setDiscussions(discussions.map(d => d.id === updated.id ? updated : d));
-      setActiveDiscussion(updated);
+      await updateDoc(doc(db, "teams", activeTeamId, "discussions", activeDiscussion.id), {
+        status: "terminated"
+      });
     } catch (err) {
       console.error("Failed to terminate", err);
     }
   };
 
-  const sendMessage = () => {
-    if (!chatInput.trim() || !activeDiscussion || !socketRef.current) return;
+  const sendMessage = async () => {
+    if (!chatInput.trim() || !activeDiscussion || !user) return;
     if (activeDiscussion.status === "terminated") return;
 
-    // We rely on the backend "send-message" broadcasting to the joined room
-    socketRef.current.emit("send-message", chatInput.trim());
-    setChatInput("");
+    const txt = chatInput.trim();
+    setChatInput(""); // optimistic clear
+
+    try {
+      await addDoc(collection(db, "teams", activeTeamId, "discussions", activeDiscussion.id, "messages"), {
+        userName: user.displayName || user.email,
+        userId: user.uid,
+        message: txt,
+        timestamp: serverTimestamp()
+      });
+    } catch(err) {
+      console.error("Failed sending msg", err);
+    }
   };
 
   return (
@@ -128,6 +168,21 @@ export default function DiscussionsPage() {
           <span>DevSpace Topics</span>
         </div>
         
+        <div className="team-selector-wrap" style={{ padding: '0.5rem 1.5rem', borderBottom: '1px solid var(--border)'}}>
+           <select 
+             className="modal-input" 
+             style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem'}}
+             value={activeTeamId}
+             onChange={e => {
+                setActiveTeamId(e.target.value);
+                setActiveDiscussion(null);
+                setMessages([]);
+             }}
+           >
+             {TEAMS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+           </select>
+        </div>
+
         <div className="sidebar-actions">
           <button className="new-btn" onClick={() => setShowNewModal(true)}>
             <Plus size={16} /> New Topic
@@ -151,7 +206,7 @@ export default function DiscussionsPage() {
               </div>
             ))
           ) : (
-             <div className="p-4 text-center text-secondary text-sm">No discussions yet.</div>
+             <div className="p-4 text-center" style={{ color: 'var(--text-secondary)', fontSize:'0.9rem' }}>No discussions in this team yet.</div>
           )}
         </div>
       </aside>
@@ -164,7 +219,7 @@ export default function DiscussionsPage() {
               <div className="chat-header-info">
                 <h2>{activeDiscussion.topic}</h2>
                 <div className="chat-header-meta">
-                  <span>{activeDiscussion.participants.length + 1} Participants</span>
+                  <span>{(activeDiscussion.participants?.length || 0) + 1} Participants</span>
                   {activeDiscussion.status === "terminated" && <span className="term-badge">TERMINATED</span>}
                 </div>
               </div>
@@ -180,11 +235,11 @@ export default function DiscussionsPage() {
             
             <div className="chat-messages">
                 <div className="chat-notice">
-                    Discussion "{activeDiscussion.topic}" created on {new Date(activeDiscussion.createdAt).toLocaleDateString()}
+                    Discussion "{activeDiscussion.topic}" created in Team {TEAMS.find(t => t.id === activeTeamId)?.name}
                 </div>
                 
-                {(messages[activeDiscussion.id] || []).map((msg, idx) => (
-                  <div key={idx} className="msg-bubble">
+                {messages.map((msg, idx) => (
+                  <div key={msg.id || idx} className="msg-bubble">
                     <span className="msg-author">{msg.userName}</span>
                     <span className="msg-text">{msg.message}</span>
                   </div>
@@ -214,7 +269,7 @@ export default function DiscussionsPage() {
           <div className="empty-state">
             <MessageSquareText size={64} className="empty-icon" />
             <h2>Select a conversation</h2>
-            <p>Choose an existing thread or create a new topic to start collaborating.</p>
+            <p>Choose an existing thread or create a new topic to start collaborating in {TEAMS.find(t => t.id === activeTeamId)?.name}.</p>
           </div>
         )}
       </main>

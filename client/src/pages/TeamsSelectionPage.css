@@ -1,0 +1,140 @@
+.teams-page-container {
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.teams-header {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+
+.teams-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.teams-brand:hover {
+  opacity: 0.8;
+}
+
+.brand-icon {
+  color: var(--accent);
+}
+
+.teams-main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  flex-grow: 1;
+}
+
+.teams-intro {
+  text-align: left;
+  margin-bottom: 3rem;
+}
+
+.teams-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 1rem 0;
+  color: white;
+  letter-spacing: -1px;
+}
+
+.teams-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.teams-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.team-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.team-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background-color: var(--team-color);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.team-card:hover {
+  background-color: var(--bg-hover);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.team-card:hover::before {
+  opacity: 1;
+}
+
+.team-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+}
+
+.team-info {
+  flex-grow: 1;
+}
+
+.team-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: white;
+}
+
+.team-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.team-arrow {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.team-card:hover .team-arrow {
+  transform: translateX(5px);
+  color: var(--team-color);
+}

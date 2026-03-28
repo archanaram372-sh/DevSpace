@@ -5,6 +5,8 @@ import EditorPage from "./pages/EditorPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import DashboardPage from "./pages/DashboardPage";
 import DiscussionsPage from "./pages/DiscussionsPage";
+import TeamsSelectionPage from "./pages/TeamsSelectionPage";
+import ScheduleView from "./pages/ScheduleView";
 import "./App.css";
 
 function App() {
@@ -15,6 +17,8 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/workspace" element={<WorkspacePage />} />
         <Route path="/discussions" element={<DiscussionsPage />} />
+        <Route path="/timeline" element={<TeamsSelectionPage />} />
+        <Route path="/timeline/:teamId" element={<ScheduleView />} />
         <Route path="/editor" element={<EditorPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
