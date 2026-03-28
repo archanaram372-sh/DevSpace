@@ -45,7 +45,7 @@ export default function SignInPage() {
       localStorage.setItem("userName", user.displayName || user.email || "User");
       localStorage.setItem("userId", user.uid);
       
-      navigate("/workspace");
+      navigate("/dashboard");
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : "GitHub login failed";
