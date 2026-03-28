@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LogOut, FolderGit2, Search, Loader2 } from "lucide-react";
+import { LogOut, FolderGit2, Search, Loader2, Moon, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchUserRepos } from "../services/githubService";
 import { logout } from "../services/authService";
@@ -14,7 +14,10 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRepo, setSelectedRepo] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Matches Dashboard state
   const navigate = useNavigate();
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   const handleLogout = async () => {
     try {
@@ -35,7 +38,6 @@ export default function WorkspacePage() {
         setFilteredRepos(data);
       } catch (err) {
         setError(err.message || "Failed to load repositories");
-        // If unauthorized, token might be expired
         if (err.message.includes("403") || err.message.includes("Unauthorized")) {
             localStorage.clear();
             navigate("/");
@@ -55,11 +57,11 @@ export default function WorkspacePage() {
     );
   }, [search, repos]);
 
-  const userName = localStorage.getItem("userName");
+  const userName = localStorage.getItem("userName") || "Developer";
 
   return (
-    <div className="workspace-container">
-      {/* Header */}
+    <div className={`workspace-container ${isDarkMode ? "dark-theme" : "light-theme"}`}>
+      {/* Header - Fixed at the top */}
       <header className="workspace-header">
         <div className="header-left">
           <div className="workspace-logo">⚡ DEVSPACE</div>
@@ -67,6 +69,10 @@ export default function WorkspacePage() {
           <h1 className="workspace-title">Your Environment</h1>
         </div>
         <div className="header-right">
+          {/* Theme Toggle Added to match Dashboard */}
+          <button className="theme-toggle-btn" onClick={toggleTheme}>
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <span className="user-greeting">Welcome, {userName}</span>
           <button className="logout-btn" onClick={handleLogout} title="Sign Out">
             <LogOut size={18} />
@@ -74,56 +80,58 @@ export default function WorkspacePage() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Scrollable area */}
       <main className="workspace-main">
-        <div className="workspace-toolbar">
-            <div className="search-bar">
-                <Search size={18} className="search-icon" />
-                <input 
-                    type="text" 
-                    placeholder="Search repositories..." 
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="search-input"
-                />
-            </div>
-            <div className="repo-stats">
-                 <FolderGit2 size={18} />
-                 <span>{filteredRepos.length} Repositories</span>
-            </div>
+        <div className="workspace-content-wrapper">
+          <div className="workspace-toolbar">
+              <div className="search-bar">
+                  <Search size={18} className="search-icon" />
+                  <input 
+                      type="text" 
+                      placeholder="Search repositories..." 
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="search-input"
+                  />
+              </div>
+              <div className="repo-stats">
+                   <FolderGit2 size={18} />
+                   <span>{filteredRepos.length} Repositories</span>
+              </div>
+          </div>
+
+          {error && (
+              <div className="workspace-error">
+                  <p>⚠️ {error}</p>
+                  <button onClick={() => window.location.reload()} className="retry-btn">Retry</button>
+              </div>
+          )}
+
+          {loading ? (
+              <div className="workspace-loading">
+                  <Loader2 size={40} className="spinner" />
+                  <p>Syncing repositories from GitHub...</p>
+              </div>
+          ) : (
+              <div className="repos-grid">
+                  {filteredRepos.length > 0 ? (
+                      filteredRepos.map(repo => (
+                          <ProjectCard 
+                              key={repo.id} 
+                              repo={repo} 
+                              onClick={() => setSelectedRepo(repo)} 
+                          />
+                      ))
+                  ) : (
+                      <div className="no-repos">
+                          <FolderGit2 size={48} className="no-repos-icon" />
+                          <h3>No repositories found</h3>
+                          <p>We couldn't find any repositories matching your search.</p>
+                      </div>
+                  )}
+              </div>
+          )}
         </div>
-
-        {error && (
-            <div className="workspace-error">
-                <p>⚠️ {error}</p>
-                <button onClick={() => window.location.reload()} className="retry-btn">Retry</button>
-            </div>
-        )}
-
-        {loading ? (
-            <div className="workspace-loading">
-                <Loader2 size={40} className="spinner" />
-                <p>Syncing repositories from GitHub...</p>
-            </div>
-        ) : (
-            <div className="repos-grid">
-                {filteredRepos.length > 0 ? (
-                    filteredRepos.map(repo => (
-                        <ProjectCard 
-                            key={repo.id} 
-                            repo={repo} 
-                            onClick={() => setSelectedRepo(repo)} 
-                        />
-                    ))
-                ) : (
-                    <div className="no-repos">
-                        <FolderGit2 size={48} className="no-repos-icon" />
-                        <h3>No repositories found</h3>
-                        <p>We couldn't find any repositories matching your search.</p>
-                    </div>
-                )}
-            </div>
-        )}
       </main>
 
       {/* Modal */}
