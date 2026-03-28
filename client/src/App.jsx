@@ -1,36 +1,67 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import "./App.css";
 
+// Connect to your backend
 const socket = io("http://127.0.0.1:5000");
 
 function App() {
-  const [code, setCode] = useState("// Start coding...");
+  // --- STATE ---
+  const [files, setFiles] = useState({
+    "index.js": "// Type some JS code...",
+    "main.py": "# Type some Python code...",
+    "styles.css": "/* Style your app */",
+  });
+  const [activeFile, setActiveFile] = useState("index.js");
   const [output, setOutput] = useState("Click RUN to execute");
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  useEffect(() => {
-    const handleCode = (newCode) => setCode(newCode);
-    const handleMsg = (msg) => setMessages((prev) => [...prev, msg]);
-
-    socket.on("receive-code", handleCode);
-    socket.on("receive-message", handleMsg);
-
-    return () => {
-      socket.off("receive-code", handleCode);
-      socket.off("receive-message", handleMsg);
+  // --- HELPERS ---
+  const getLanguage = (filename) => {
+    const ext = filename.split(".").pop();
+    const map = {
+      js: "javascript",
+      py: "python",
+      cpp: "cpp",
+      java: "java",
+      html: "html",
+      css: "css",
     };
-  }, []);
+    return map[ext] || "plaintext";
+  };
+
+  // --- ACTIONS ---
+  const addFile = () => {
+    const name = prompt("Enter filename with extension (e.g., script.py):");
+    if (name && !files[name]) {
+      setFiles((prev) => ({ ...prev, [name]: "" }));
+      setActiveFile(name);
+    }
+  };
+
+  const deleteFile = (fileName) => {
+    if (Object.keys(files).length === 1) return alert("Must have at least one file!");
+    const newFiles = { ...files };
+    delete newFiles[fileName];
+    setFiles(newFiles);
+    if (activeFile === fileName) setActiveFile(Object.keys(newFiles)[0]);
+  };
 
   const runCode = async () => {
+    setOutput("Running...");
     try {
-      const res = await axios.post("http://127.0.0.1:5000/run", { code });
-      setOutput(res.data.output);
+      // Send both code AND language to your backend
+      const res = await axios.post("http://127.0.0.1:5000/run", {
+        code: files[activeFile],
+        language: getLanguage(activeFile),
+      });
+      setOutput(res.data.output || "Execution finished (no output).");
     } catch (err) {
-      setOutput("Server error");
+      setOutput("Error: Could not connect to execution server.");
     }
   };
 
@@ -40,59 +71,100 @@ function App() {
     setNewMsg("");
   };
 
+  // --- EFFECTS ---
+  useEffect(() => {
+    const handleCodeSync = ({ fileName, content }) => {
+      setFiles((prev) => ({ ...prev, [fileName]: content }));
+    };
+
+    const handleMsg = (msg) => setMessages((prev) => [...prev, msg]);
+
+    socket.on("receive-code", handleCodeSync);
+    socket.on("receive-message", handleMsg);
+
+    return () => {
+      socket.off("receive-code");
+      socket.off("receive-message");
+    };
+  }, []);
+
   return (
-    <div className="app">
-      {/* TOP NAVBAR */}
-      <div className="navbar">
-        <div className="logo">🟦 DevSpace</div>
-        <button className="runBtn" onClick={runCode}>▶ Run</button>
-      </div>
-
-      <div className="main">
-        {/* LEFT SIDEBAR */}
-        <div className="sidebar">
-          <h3>Explorer</h3>
-          <p>📄 index.js</p>
-          <p>📄 app.js</p>
-          <p>📄 styles.css</p>
+    <div className="app-container">
+      {/* HEADER */}
+      <header className="navbar">
+        <div className="brand">
+          <span className="logo-icon">🟦</span>
+          <h1>DevSpace <small>v2.0</small></h1>
         </div>
+        <div className="nav-actions">
+          <button className="run-btn" onClick={runCode}>▶ RUN</button>
+        </div>
+      </header>
 
-        {/* CENTER EDITOR + OUTPUT */}
-        <div className="editorSection">
-          <Editor
-            height="70vh"
-            language="javascript"
-            value={code}
-            theme="vs-dark"
-            onChange={(value) => {
-              setCode(value);
-              socket.emit("code-change", value);
-            }}
-          />
-
-          <div className="outputPanel">
-            <h3>Output</h3>
-            <pre style={{ whiteSpace: "pre-wrap", color: "#4ade80" }}>
-              {output}
-            </pre>
+      <div className="workspace">
+        {/* SIDEBAR */}
+        <aside className={`sidebar ${isSidebarOpen ? "open" : "closed"}`}>
+          <div className="sidebar-header">
+            <span>FILES</span>
+            <button onClick={addFile} className="add-btn">+</button>
           </div>
-        </div>
-
-        {/* RIGHT CHAT PANEL */}
-        <div className="chatPanel">
-          <h3>💬 Team Chat</h3>
-          <div className="messages">
-            {messages.map((msg, i) => (
-              <div key={i} className="msg">{msg}</div>
+          <div className="file-list">
+            {Object.keys(files).map((name) => (
+              <div 
+                key={name} 
+                className={`file-item ${activeFile === name ? "active" : ""}`}
+                onClick={() => setActiveFile(name)}
+              >
+                <span className="file-icon">📄</span>
+                <span className="file-name">{name}</span>
+                <button className="del-file" onClick={(e) => { e.stopPropagation(); deleteFile(name); }}>×</button>
+              </div>
             ))}
           </div>
-          <input
-            value={newMsg}
-            onChange={(e) => setNewMsg(e.target.value)}
-            placeholder="Type message..."
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
+        </aside>
+
+        {/* EDITOR SECTION */}
+        <main className="editor-area">
+          <div className="tab-indicator">
+            Editing: <strong>{activeFile}</strong> 
+            <span className="lang-badge">{getLanguage(activeFile)}</span>
+          </div>
+          <div className="monaco-wrapper">
+            <Editor
+              theme="vs-dark"
+              language={getLanguage(activeFile)}
+              value={files[activeFile]}
+              onChange={(val) => {
+                setFiles((prev) => ({ ...prev, [activeFile]: val }));
+                socket.emit("code-change", { fileName: activeFile, content: val });
+              }}
+              options={{ fontSize: 14, minimap: { enabled: false }, automaticLayout: true }}
+            />
+          </div>
+          <div className="terminal">
+            <div className="terminal-header">Console Output</div>
+            <pre className="output">{output}</pre>
+          </div>
+        </main>
+
+        {/* CHAT PANEL */}
+        <section className="chat-section">
+          <div className="chat-header">Team Chat</div>
+          <div className="message-list">
+            {messages.map((m, i) => (
+              <div key={i} className="message-bubble">{m}</div>
+            ))}
+          </div>
+          <div className="chat-input-area">
+            <input 
+              value={newMsg} 
+              onChange={(e) => setNewMsg(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder="Message..." 
+            />
+            <button onClick={sendMessage}>Send</button>
+          </div>
+        </section>
       </div>
     </div>
   );
