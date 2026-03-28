@@ -1,10 +1,10 @@
-// client/src/pages/EditorPage.jsx
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { getSocket, connectSocket, disconnectSocket } from "../services/socketService";
 import { logout, getCurrentUser } from "../services/authService";
+import { fetchRepoTree } from "../services/githubService";
 import { getLanguage, injectCodeAttribution } from "../utils/editorUtils";
 
 import Navbar from "../components/editor/Navbar";
@@ -23,6 +23,7 @@ const DEFAULT_FILES = {
 
 export default function EditorPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const editorRef = useRef(null);
 
   // Auth
@@ -56,8 +57,32 @@ export default function EditorPage() {
 
     setUser(currentUser);
 
+    const owner = searchParams.get("owner");
+    const repo = searchParams.get("repo");
+    const roomId = owner && repo ? `${owner}/${repo}` : "default-room";
+
+    if (owner && repo) {
+        fetchRepoTree(owner, repo).then(tree => {
+            const newFiles = {};
+            let hasFiles = false;
+            // Add top 10 simple text-based files for immediate viewing
+            tree.filter(f => f.type === "blob" && typeof getLanguage(f.path) === "string" && getLanguage(f.path) !== "plaintext")
+                .slice(0, 10)
+                .forEach(f => {
+                    newFiles[f.path] = `// Content for ${f.path}\n// Loaded from GitHub API...`;
+                    hasFiles = true;
+                });
+            if (hasFiles) {
+                setFiles(newFiles);
+                setActiveFile(Object.keys(newFiles)[0]);
+            }
+        }).catch(err => console.error("Could not fetch repo tree", err));
+    }
+
     const newSocket = connectSocket(token);
     setSocket(newSocket);
+    
+    newSocket.emit("join-room", roomId);
 
     const buildUserMap = (usersList) => {
       const map = {};

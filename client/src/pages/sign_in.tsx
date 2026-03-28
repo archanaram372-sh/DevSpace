@@ -36,16 +36,16 @@ export default function SignInPage() {
     try {
       setLoading(true);
       setError(null);
-      const { user, token } = await loginWithGithub();
+      const { user, token, githubToken } = await loginWithGithub();
       
-      await verifyTokenWithBackend(token);
+      await verifyTokenWithBackend(token, githubToken);
       
       // Store user info and token in localStorage
       localStorage.setItem("userToken", token);
       localStorage.setItem("userName", user.displayName || user.email || "User");
       localStorage.setItem("userId", user.uid);
       
-      navigate("/editor");
+      navigate("/workspace");
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : "GitHub login failed";

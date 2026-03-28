@@ -145,34 +145,59 @@
   flex: 1;
 }
 
-.file-item {
-  padding: 8px 16px;
+.tree-view {
+  padding: 4px 0;
+}
+
+.tree-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
-  border-bottom: 1px solid #3e3e42;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-right: 16px;
   font-size: 13px;
   color: #cccccc;
   transition: background 0.2s;
+  user-select: none;
 }
 
-.file-item:hover {
-  background: #2d2d30;
+.tree-item:hover {
+  background: #2a2d2e;
 }
 
-.file-item.active {
-  background: #094771;
+.tree-item.active {
+  background: #37373d;
   color: #fff;
-  border-left: 3px solid #0e639c;
-  padding-left: 13px;
 }
 
-.file-icon {
+.folder-item {
+  font-weight: 500;
+}
+
+.folder-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: #c5c5c5;
+}
+
+.tree-icon {
   flex-shrink: 0;
 }
 
-.file-name {
+.folder-icon-svg {
+  margin-right: 2px;
+}
+
+.file-icon-svg {
+  color: #519aba; /* Subtle blue for default file icon, similar to vs code */
+  margin-left: 18px; /* space where chevron would be */
+}
+
+.file-name, .folder-name {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -182,7 +207,7 @@
 .del-file {
   background: none;
   border: none;
-  color: #cccccc;
+  color: #858585;
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -191,12 +216,16 @@
   transition: opacity 0.2s, color 0.2s;
 }
 
-.file-item:hover .del-file {
+.tree-item:hover .del-file {
   opacity: 1;
 }
 
 .del-file:hover {
   color: #ff6b6b;
+}
+
+.active .del-file {
+  opacity: 1;
 }
 
 .editor-main {

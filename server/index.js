@@ -7,6 +7,7 @@ import { Server } from "socket.io";
 import authRoutes from "./routes/auth.js";
 import admin from "./firebaseAdmin.js";
 import { analyzeCode } from "./ai_module.js";
+import reposRoutes from "./routes/repos.js";
 
 dotenv.config({ path: ".env.api" });
 
@@ -26,6 +27,7 @@ app.post("/analyze", async (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/repos", reposRoutes);
 
 // create http server
 const server = http.createServer(app);
@@ -74,6 +76,8 @@ const userColors = [
 // 🔥 REALTIME COLLAB LOGIC
 io.on("connection", (socket) => {
   const color = userColors[users.size % userColors.length];
+  
+  // Set default initial state without room
   users.set(socket.id, {
     userId: socket.userId,
     name: socket.userName,
@@ -81,46 +85,55 @@ io.on("connection", (socket) => {
     color,
     cursor: { line: 0, column: 0 },
     selection: null,
+    roomId: null,
   });
 
   console.log("User connected:", socket.userName, socket.id);
 
-  // Broadcast user joined
-  socket.broadcast.emit("user-joined", {
-    userId: socket.id,
-    name: socket.userName,
-    color,
-    users: Array.from(users.values()).map((u, idx) => ({
-      id: Array.from(users.keys())[idx],
-      name: u.name,
-      color: u.color,
-    })),
-  });
+  socket.on("join-room", (roomId) => {
+    const user = users.get(socket.id);
+    if (!user) return;
 
-  // Send existing users to new client
-  socket.emit("users-list", 
-    Array.from(users.entries()).map(([id, user]) => ({
-      id,
-      name: user.name,
-      color: user.color,
-    }))
-  );
+    if (user.roomId) socket.leave(user.roomId);
+    
+    user.roomId = roomId;
+    socket.join(roomId);
+    console.log(`User ${user.name} joined room ${roomId}`);
 
-  // Handle code changes with user info
-  socket.on("code-change", (data) => {
-    socket.broadcast.emit("receive-code", {
-      ...data,
+    const usersInRoom = Array.from(users.entries())
+        .filter(([id, u]) => u.roomId === roomId)
+        .map(([id, u]) => ({
+            id,
+            name: u.name,
+            color: u.color,
+        }));
+
+    socket.to(roomId).emit("user-joined", {
       userId: socket.id,
-      userName: socket.userName,
+      name: socket.userName,
+      color,
+      users: usersInRoom,
     });
+
+    socket.emit("users-list", usersInRoom);
   });
 
-  // Handle cursor movements
+  socket.on("code-change", (data) => {
+    const user = users.get(socket.id);
+    if (user && user.roomId) {
+      socket.to(user.roomId).emit("receive-code", {
+        ...data,
+        userId: socket.id,
+        userName: socket.userName,
+      });
+    }
+  });
+
   socket.on("cursor-move", (cursor) => {
     const user = users.get(socket.id);
-    if (user) {
+    if (user && user.roomId) {
       user.cursor = cursor;
-      socket.broadcast.emit("cursor-position", {
+      socket.to(user.roomId).emit("cursor-position", {
         userId: socket.id,
         cursor,
         userName: socket.userName,
@@ -129,12 +142,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle selection changes
   socket.on("selection-change", (selection) => {
     const user = users.get(socket.id);
-    if (user) {
+    if (user && user.roomId) {
       user.selection = selection;
-      socket.broadcast.emit("selection-update", {
+      socket.to(user.roomId).emit("selection-update", {
         userId: socket.id,
         selection,
         userName: socket.userName,
@@ -142,20 +154,25 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle chat messages
   socket.on("send-message", (message) => {
-    io.emit("receive-message", {
-      userName: socket.userName,
-      message,
-      timestamp: new Date().toISOString(),
-      userId: socket.id,
-    });
+    const user = users.get(socket.id);
+    if (user && user.roomId) {
+      io.to(user.roomId).emit("receive-message", {
+        userName: socket.userName,
+        message,
+        timestamp: new Date().toISOString(),
+        userId: socket.id,
+      });
+    }
   });
 
   socket.on("disconnect", () => {
+    const user = users.get(socket.id);
+    if (user && user.roomId) {
+        io.to(user.roomId).emit("user-left", { userId: socket.id });
+    }
     users.delete(socket.id);
     console.log("User disconnected:", socket.id);
-    io.emit("user-left", { userId: socket.id });
   });
 });
 

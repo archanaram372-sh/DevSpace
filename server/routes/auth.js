@@ -1,10 +1,11 @@
 import express from "express";
 import admin from "../firebaseAdmin.js";
+import { githubTokens } from "../tokenStore.js";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const { token } = req.body;
+  const { token, githubToken } = req.body;
 
   if (!token) {
     return res.status(400).json({ error: "Token is required" });
@@ -13,7 +14,12 @@ router.post("/", async (req, res) => {
   try {
     const decoded = await admin.auth().verifyIdToken(token);
 
-    console.log("User authenticated:", decoded.email);
+    if (githubToken) {
+      githubTokens.set(decoded.uid, githubToken);
+      console.log(`Stored GitHub token for user: ${decoded.email}`);
+    } else {
+      console.log(`User authenticated without GitHub token: ${decoded.email}`);
+    }
 
     res.json({
       message: "Authenticated",
