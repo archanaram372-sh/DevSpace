@@ -33,15 +33,32 @@ io.on("connection", (socket) => {
 
 // code execution API
 app.post("/run", (req, res) => {
+  const { code } = req.body;
+  let logs = []; // The bucket for our logs
+
   try {
-    const vm = new VM();
-    const result = vm.run(req.body.code);
-    res.json({ output: result });
+    const vm = new VM({
+      timeout: 1000,
+      sandbox: {
+        console: {
+          log: (...args) => {
+            logs.push(args.join(" ")); // This captures console.log("hi")
+          }
+        }
+      }
+    });
+
+    vm.run(code);
+
+    // If logs are empty, return the last evaluated expression, else return the logs
+    const output = logs.length > 0 ? logs.join("\n") : "Code executed (no output)";
+    res.json({ output: output });
+
   } catch (err) {
-    res.json({ output: err.toString() });
+    res.json({ output: `Error: ${err.message}` });
   }
 });
 
 server.listen(5000, () => {
-  console.log("Server running on port 5000");
+  console.log("✅ Server running on port 5000 with Log Trapping");
 });
