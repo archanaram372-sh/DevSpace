@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import SignInPage from "./pages/sign_in";
-import EditorPage from "./pages/Editor";
+import EditorPage from "./pages/EditorPage";
 import "./App.css";
 
 function App() {
