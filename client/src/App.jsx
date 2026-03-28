@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import axios from "axios";
-import { io } from "socket.io-client";
+import { socket } from "./socket/socket";
 import JoinRoom from "./components/JoinRoom";   // ⭐ NEW
 import "./App.css";
-
-let socket; // ⭐ socket will be created AFTER joining
 
 function App() {
   // ⭐ NEW ROOM STATES
@@ -35,7 +33,6 @@ function App() {
 
   // ⭐ NEW JOIN ROOM FUNCTION
   const handleJoinRoom = (name, roomId) => {
-    socket = io("http://127.0.0.1:5000");
 
     setUsername(name);
     setRoom(roomId);
@@ -43,12 +40,15 @@ function App() {
 
     socket.emit("join-room", { username: name, room: roomId });
 
+    socket.off("receive-code");
+    socket.off("receive-message");
+
     socket.on("receive-code", ({ fileName, content }) => {
-      setFiles((prev) => ({ ...prev, [fileName]: content }));
+    setFiles((prev) => ({ ...prev, [fileName]: content }));
     });
 
     socket.on("receive-message", (msg) => {
-      setMessages((prev) => [...prev, msg]);
+    setMessages((prev) => [...prev, msg]);
     });
   };
 

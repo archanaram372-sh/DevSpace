@@ -17,6 +17,8 @@ const io = new Server(server, {
     origin: "*",
   },
 });
+const roomSocket = require("./socket/roomSocket");
+roomSocket(io);
 
 // 🔥 REALTIME COLLAB LOGIC
 io.on("connection", (socket) => {
