@@ -1,0 +1,52 @@
+.joinContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  background: #1e1e1ee8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.joinBox {
+  background: #252526;
+  padding: 40px;
+  border-radius: 10px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  text-align: center;
+  box-shadow: 0 0 20px #000;
+}
+
+.joinBox h2 {
+  margin: 0 0 10px 0;
+  color: #4fc3f7;
+}
+
+.joinBox input {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #333;
+  color: white;
+  outline: none;
+}
+
+.joinBox button {
+  padding: 10px;
+  background: #0e639c;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.joinBox button:hover {
+  background: #1177bb;
+}
