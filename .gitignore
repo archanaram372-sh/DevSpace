@@ -1,2 +1,9 @@
-echo "server/serviceAccountKey.json" >> .gitignore
+server/serviceAccountKey.json
+# Ignore node_modules everywhere
 /node_modules
+/server/node_modules
+/client/node_modules
+/server/.env
+/server/.env.api
+/.env
+

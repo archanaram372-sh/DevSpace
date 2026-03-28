@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import axios from "axios";
+import AnalyzeCode from "../components/ai.jsx";
 import { getSocket, connectSocket, disconnectSocket } from "../services/socketService";
 import { logout, getCurrentUser } from "../services/authService";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +28,7 @@ export default function EditorPage() {
   const [remoteCursors, setRemoteCursors] = useState({});
   const [users, setUsers] = useState([]);
   const [output, setOutput] = useState("Click RUN to execute");
+  const [analysis, setAnalysis] = useState("Click ANALYZE to inspect your code.");
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
 
@@ -187,6 +189,12 @@ export default function EditorPage() {
           )}
         </div>
         <div className="navbar-right">
+          <AnalyzeCode
+            activeFile={activeFile}
+            code={files[activeFile]}
+            language={getLanguage(activeFile)}
+            onAnalysisResult={setAnalysis}
+          />
           <button className="run-btn" onClick={runCode}>
             <Play size={16} />
             RUN
@@ -277,6 +285,10 @@ export default function EditorPage() {
           <div className="terminal">
             <div className="terminal-header">Console Output</div>
             <pre className="output">{output}</pre>
+          </div>
+          <div className="terminal">
+            <div className="terminal-header">AI Analysis</div>
+            <pre className="output">{analysis}</pre>
           </div>
         </main>
 

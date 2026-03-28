@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import { VM } from "vm2";
@@ -5,11 +6,24 @@ import http from "http";
 import { Server } from "socket.io";
 import authRoutes from "./routes/auth.js";
 import admin from "./firebaseAdmin.js";
+import { analyzeCode } from "./ai_module.js";
+
+dotenv.config({ path: ".env.api" });
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+app.post("/analyze", async (req, res) => {
+  try {
+    await analyzeCode(req, res);
+  } catch (err) {
+    console.error("Analyze API Error:", err);
+    res.status(500).json({ error: "AI analysis failed", details: err.message });
+  }
+});
 
 app.use("/api/auth", authRoutes);
 
@@ -22,8 +36,8 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-import roomSocket from "./socket/roomSocket.js";
-roomSocket(io);
+
+
 
 // Middleware to authenticate socket connections
 io.use(async (socket, next) => {
@@ -172,6 +186,14 @@ app.post("/run", (req, res) => {
   }
 });
 
-server.listen(5000, () => {
-  console.log("✅ Server running on port 5000");
+server.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`🔴 Port ${PORT} is already in use. Stop the existing server or change PORT in .env.api.`);
+    process.exit(1);
+  }
+  throw err;
 });
