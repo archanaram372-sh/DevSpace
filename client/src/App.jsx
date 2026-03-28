@@ -1,121 +1,80 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import Editor from "@monaco-editor/react";
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  // 🟢 Fake project files
+  const [files, setFiles] = useState({
+    "index.js": "console.log('Hello from index.js');",
+    "app.js": "function app(){ return 'DevSpace'; }",
+    "style.css": "body { background:black; }"
+  });
+
+  const [activeFile, setActiveFile] = useState("index.js");
+
+  // When code changes → update file content
+  function handleEditorChange(value) {
+    setFiles({
+      ...files,
+      [activeFile]: value
+    });
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column" }}>
 
-      <div className="ticks"></div>
+      {/* NAVBAR */}
+      <div style={{height:"45px",background:"#1e1e1e",color:"white",display:"flex",alignItems:"center",paddingLeft:"15px",fontWeight:"bold"}}>
+        DevSpace IDE 🚀
+      </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <div style={{ flex:1, display:"flex" }}>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* SIDEBAR FILES */}
+        <div style={{width:"220px",background:"#252526",color:"white",padding:"10px"}}>
+          <h3>Explorer</h3>
+
+          {Object.keys(files).map(file => (
+            <p
+              key={file}
+              style={{cursor:"pointer", color: activeFile===file ? "#4fc3f7":"white"}}
+              onClick={() => setActiveFile(file)}
+            >
+              📄 {file}
+            </p>
+          ))}
+
+        </div>
+
+        {/* EDITOR AREA */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
+
+          {/* FILE TAB */}
+          <div style={{height:"35px",background:"#2d2d2d",color:"white",display:"flex",alignItems:"center",paddingLeft:"10px"}}>
+            {activeFile}
+          </div>
+
+          {/* MONACO EDITOR */}
+          <div style={{ flex:1 }}>
+            <Editor
+              height="100%"
+              language="javascript"
+              theme="vs-dark"
+              value={files[activeFile]}
+              onChange={handleEditorChange}
+            />
+          </div>
+
+        </div>
+      </div>
+
+      {/* TERMINAL */}
+      <div style={{height:"120px",background:"#1e1e1e",color:"white",padding:"10px"}}>
+        Terminal (Coming Soon)
+      </div>
+
+    </div>
+  );
 }
 
-export default App
+export default App;
