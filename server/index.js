@@ -124,7 +124,7 @@ io.on("connection", (socket) => {
         userId: socket.id,
         cursor,
         userName: socket.userName,
-        color,
+        color: user.color,
       });
     }
   });

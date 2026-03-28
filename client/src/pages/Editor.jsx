@@ -23,10 +23,13 @@ export default function EditorPage() {
     "styles.css": "/* Style your app */",
   });
   const [activeFile, setActiveFile] = useState("index.js");
+  const [lineOwnership, setLineOwnership] = useState({}); // Track who edited each line: { "index.js": { 1: { user: "name", color: "#FF6B6B" }, ... } }
 
   // Collaboration
   const [remoteCursors, setRemoteCursors] = useState({});
   const [users, setUsers] = useState([]);
+  const [userColor, setUserColor] = useState("#FF6B6B");
+  const [userMap, setUserMap] = useState({}); // { userId: { name, color } }
   const [output, setOutput] = useState("Click RUN to execute");
   const [analysis, setAnalysis] = useState("Click ANALYZE to inspect your code.");
   const [messages, setMessages] = useState([]);
@@ -51,21 +54,64 @@ export default function EditorPage() {
     // Listen for collaboration events
     newSocket.on("users-list", (usersList) => {
       setUsers(usersList);
+      // Build user map: { userId: { name, color } }
+      const map = {};
+      usersList.forEach((user) => {
+        map[user.id] = { name: user.name, color: user.color };
+      });
+      setUserMap(map);
+      console.log("👥 Users list updated:", map);
+      
+      // Find current user's color by looking for the latest user (just connected)
+      if (usersList.length > 0) {
+        setUserColor(usersList[usersList.length - 1].color);
+      }
     });
 
     newSocket.on("user-joined", (data) => {
       setUsers(data.users);
+      const map = {};
+      data.users.forEach((user) => {
+        map[user.id] = { name: user.name, color: user.color };
+      });
+      setUserMap(map);
+      console.log("➕ User joined, updated map:", map);
     });
 
-    newSocket.on("receive-code", ({ fileName, content, userName }) => {
-      setFiles((prev) => ({ ...prev, [fileName]: content }));
+    newSocket.on("receive-code", ({ fileName, content, userName, userId }) => {
+      console.log("✏️ Code received from", userName, "for", fileName);
+      
+      // Inject attribution comment into the code
+      const language = getLanguage(fileName);
+      const attributedCode = injectCodeAttribution(content, userName, language);
+      
+      setFiles((prev) => ({ ...prev, [fileName]: attributedCode }));
+      
+      // Track line ownership - mark all lines as edited by this user
+      setLineOwnership((prev) => {
+        const fileOwnership = prev[fileName] || {};
+        const lines = attributedCode.split("\n");
+        const newOwnership = { ...fileOwnership };
+        
+        lines.forEach((_, index) => {
+          newOwnership[index + 1] = {
+            user: userName,
+            color: userMap[userId]?.color || "#CCCCCC",
+            timestamp: new Date().toLocaleTimeString(),
+          };
+        });
+        
+        return { ...prev, [fileName]: newOwnership };
+      });
     });
 
     newSocket.on("cursor-position", ({ userId, cursor, userName, color }) => {
-      setRemoteCursors((prev) => ({
-        ...prev,
-        [userId]: { cursor, userName, color },
-      }));
+      console.log("📍 Cursor received:", { userId, cursor, userName, color });
+      setRemoteCursors((prev) => {
+        const updated = { ...prev, [userId]: { top: cursor.top, left: cursor.left, userName, color } };
+        console.log("🎨 Cursors state updated:", updated);
+        return updated;
+      });
     });
 
     newSocket.on("receive-message", ({ userName, message, timestamp }) => {
@@ -86,6 +132,46 @@ export default function EditorPage() {
     };
   }, [navigate]);
 
+  // Apply line decorations based on ownership
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    const editor = editorRef.current;
+    const fileOwnership = lineOwnership[activeFile] || {};
+    
+    const decorations = Object.entries(fileOwnership).map(([lineNum, info]) => ({
+      range: new (window.monaco?.Range || require("@monaco-editor/react").Range)(
+        parseInt(lineNum),
+        1,
+        parseInt(lineNum),
+        1000
+      ),
+      options: {
+        isWholeLine: true,
+        className: "line-ownership",
+        glyphMarginClassName: "codicon codicon-edit",
+        glyphMarginHoverMessage: {
+          value: `✏️ **${info.user}** edited this line at ${info.timestamp}`,
+        },
+        minimap: {
+          color: info.color + "40", // Add transparency
+          rasterized: true,
+        },
+        overviewRuler: {
+          color: info.color + "80",
+          position: 7,
+        },
+      },
+    }));
+
+    try {
+      // Note: This will require the Monaco instance - we'll use a simpler approach
+      console.log("📝 Applying decorations for", activeFile, ":", decorations.length, "lines");
+    } catch (err) {
+      console.warn("Decoration error:", err);
+    }
+  }, [lineOwnership, activeFile, editorRef]);
+
   const getLanguage = (filename) => {
     const ext = filename.split(".").pop();
     const map = {
@@ -102,6 +188,28 @@ export default function EditorPage() {
     return map[ext] || "plaintext";
   };
 
+  const getCommentStyle = (language) => {
+    const commentMap = {
+      javascript: "//",
+      python: "#",
+      cpp: "//",
+      java: "//",
+      html: "<!--",
+      css: "/*",
+      typescript: "//",
+    };
+    return commentMap[language] || "#";
+  };
+
+  const injectCodeAttribution = (code, userName, language) => {
+    const comment = getCommentStyle(language);
+    const timestamp = new Date().toLocaleTimeString();
+    const attribution = `${comment} [${userName} @ ${timestamp}]`;
+    
+    // Add attribution as first line
+    return `${attribution}\n${code}`;
+  };
+
   const handleCodeChange = (value) => {
     setFiles((prev) => ({ ...prev, [activeFile]: value }));
     if (socket) {
@@ -109,16 +217,39 @@ export default function EditorPage() {
     }
   };
 
-  const handleCursorChange = () => {
+  const handleCursorChange = (selection) => {
     if (editorRef.current && socket) {
-      const position = editorRef.current.getPosition();
-      socket.emit("cursor-move", {
-        line: position.lineNumber,
-        column: position.column,
-      });
+      const position = selection.position; // Monaco Editor Position object
+      const editor = editorRef.current;
+      
+      try {
+        // Get line height (works in Monaco 0.33+)
+        const lineHeight = editor.getLineHeight ? editor.getLineHeight() : 20;
+        
+        // Average monospace character width (approximate)
+        const charWidth = 8.4;
+        
+        // Get scroll position
+        const scrollTop = editor.getScrollTop();
+        const scrollLeft = editor.getScrollLeft();
+        
+        // Calculate pixel position relative to editor viewport
+        const topPx = (position.lineNumber - 1) * lineHeight - scrollTop;
+        const leftPx = (position.column - 1) * charWidth - scrollLeft;
+        
+        console.log("📤 Sending cursor:", { lineHeight, charWidth, scrollTop, scrollLeft, topPx, leftPx });
+        
+        socket.emit("cursor-move", {
+          top: topPx,
+          left: leftPx,
+          line: position.lineNumber,
+          column: position.column,
+        });
+      } catch (err) {
+        console.warn("Cursor position calculation error:", err);
+      }
     }
   };
-
   const runCode = async () => {
     setOutput("Running...");
     try {
@@ -266,17 +397,19 @@ export default function EditorPage() {
 
             {/* Remote Cursors Overlay */}
             <div className="cursors-overlay">
-              {Object.entries(remoteCursors).map(([userId, { cursor, userName, color }]) => (
+              {Object.entries(remoteCursors).map(([userId, { top, left, userName, color }]) => (
                 <div
                   key={userId}
                   className="remote-cursor"
                   style={{
                     backgroundColor: color,
-                    opacity: 0.7,
+                    top: `${top}px`,
+                    left: `${left}px`,
                   }}
-                  title={userName}
                 >
-                  <span className="cursor-label">{userName}</span>
+                  <span className="cursor-label" style={{ backgroundColor: color }}>
+                    {userName}
+                  </span>
                 </div>
               ))}
             </div>

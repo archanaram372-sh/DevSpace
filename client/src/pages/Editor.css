@@ -204,6 +204,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .tab-bar {
@@ -226,19 +227,19 @@
   border-radius: 3px;
   font-size: 11px;
 }
-
 .monaco-wrapper {
+  position: relative; /* Essential for absolute children */
   flex: 1;
   overflow: hidden;
-  position: relative;
 }
 
 .cursors-overlay {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
+  color:yellow;
   pointer-events: none;
   z-index: 1000;
 }
@@ -247,24 +248,27 @@
   position: absolute;
   width: 2px;
   height: 20px;
-  display: flex;
-  align-items: flex-start;
-  pointer-events: none;
-  animation: blink 1s infinite;
+  pointer-events: none; /* Don't block clicks to the editor */
+  z-index: 10;
+  transition: all 0.15s ease;
+  opacity: 1;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
 
 .cursor-label {
   position: absolute;
-  top: -20px;
-  left: 2px;
-  font-size: 11px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 2px 4px;
-  border-radius: 2px;
+  top: -18px;
+  left: 0;
   white-space: nowrap;
-  color: #fff;
-  z-index: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: inherit; /* Matches the cursor color */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
 
 @keyframes blink {
   0%,
@@ -407,4 +411,27 @@
 .message-list::-webkit-scrollbar-thumb:hover,
 .output::-webkit-scrollbar-thumb:hover {
   background: #4e4e50;
+}
+
+/* Line Ownership & Attribution */
+.line-ownership {
+  background-color: rgba(76, 205, 196, 0.1) !important;
+}
+
+/* Attribution comment styling */
+.mtk6 {
+  /* Comments */
+  color: #6a9955;
+}
+
+/* Override Monaco built-in comment coloring */
+.line-comment-attribution {
+  color: #8abedc;
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* Glyph margin for code ownership */
+.codicon-edit {
+  color: #4ecdc4;
 }
