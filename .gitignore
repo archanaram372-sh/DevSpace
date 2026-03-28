@@ -1,1 +1,2 @@
 echo "server/serviceAccountKey.json" >> .gitignore
+/node_modules
