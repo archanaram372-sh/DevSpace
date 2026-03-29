@@ -1,12 +1,15 @@
 /* GLOBAL RESET */
-body, html {
+html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background: #1e1e1e;
   color: white;
-  overflow: hidden; /* Prevents double scrollbars */
+
+  /* allow vertical scroll */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* APP CONTAINER */
