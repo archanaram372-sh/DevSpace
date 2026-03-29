@@ -43,3 +43,16 @@ export const fetchRepoTree = async (owner, repo) => {
   
   return response.json();
 };
+
+export const fetchFileContent = async (owner, repo, path) => {
+  const encodedPath = encodeURIComponent(path);
+  const response = await fetch(`${API_BASE_URL}/${owner}/${repo}/contents/${encodedPath}`, {
+    headers: getHeaders(),
+  });
+  
+  if (!response.ok) {
+    throw new Error("Failed to fetch file content");
+  }
+  
+  return response.text();
+};

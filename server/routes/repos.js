@@ -102,4 +102,23 @@ router.get("/:owner/:repo/files", async (req, res) => {
   }
 });
 
+// GET /api/repos/:owner/:repo/contents/:path - Fetch file content
+router.get("/:owner/:repo/contents/:path", async (req, res) => {
+  const { owner, repo, path } = req.params;
+  try {
+    const data = await fetchFromGitHub(`/repos/${owner}/${repo}/contents/${path}`, req.githubToken);
+    
+    // GitHub contents API returns base64 encoded content for files
+    if (data.type === 'file' && data.encoding === 'base64') {
+      const content = Buffer.from(data.content, 'base64').toString('utf8');
+      res.send(content);
+    } else {
+      res.send(""); // In case it's empty or unexpected
+    }
+  } catch (error) {
+    console.error(`Error fetching file content for ${owner}/${repo}/${path}:`, error);
+    res.status(500).json({ error: "Failed to fetch file content" });
+  }
+});
+
 export default router;

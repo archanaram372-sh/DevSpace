@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "firebase/firestore";
-import { ArrowLeft, Check, X, Calendar as CalIcon, ChevronLeft, ChevronRight, Moon, Sun, Plus, Search, Users, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, X, Calendar as CalIcon, ChevronLeft, ChevronRight, Moon, Sun, Plus, Search, Users, UserPlus, Video } from "lucide-react";
 import "./ScheduleView.css";
 
 // Updated Heatmap with Tooltip
@@ -119,6 +119,22 @@ export default function ScheduleView() {
     } catch (err) { console.error(err); }
   };
 
+  const handleScheduleMeet = async () => {
+    window.open("https://meet.google.com/new", "_blank");
+    
+    try {
+      await addDoc(collection(db, "teams", teamId, "schedule"), {
+        title: "Team Meeting ✨",
+        tag: "Meeting",
+        color: "#10b981",
+        date: selectedDate,
+        collaborators: collaborators,
+        isCompleted: false,
+        createdAt: Date.now()
+      });
+    } catch (err) { console.error(err); }
+  };
+
   const toggleTaskCompletion = async (taskId, currentStatus) => {
     await updateDoc(doc(db, "teams", teamId, "schedule", taskId), { isCompleted: !currentStatus });
   };
@@ -211,8 +227,12 @@ export default function ScheduleView() {
             <div className="task-panel-card">
               <div className="task-panel-header">
                 <h3>Tasks: {selectedDate}</h3>
-                <div className="search-wrapper">
-                  <Search size={14} className="search-icon" />
+                <div className="task-header-actions">
+                  <button className="gmeet-schedule-btn" onClick={handleScheduleMeet} title="Schedule a Google Meet for this day">
+                    <Video size={14} /> <span>Meet</span>
+                  </button>
+                  <div className="search-wrapper">
+                    <Search size={14} className="search-icon" />
                   <input 
                     type="text" 
                     placeholder="Search tasks or members..." 
@@ -220,6 +240,7 @@ export default function ScheduleView() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="task-search-input"
                   />
+                  </div>
                 </div>
               </div>
 

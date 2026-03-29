@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { getSocket, connectSocket, disconnectSocket } from "../services/socketService";
 import { logout, getCurrentUser } from "../services/authService";
-import { fetchRepoTree } from "../services/githubService";
+import { fetchRepoTree, fetchFileContent } from "../services/githubService";
 import { getLanguage, injectCodeAttribution } from "../utils/editorUtils";
 
 import Navbar from "../components/editor/Navbar";
@@ -62,19 +62,32 @@ export default function EditorPage() {
     const roomId = owner && repo ? `${owner}/${repo}` : "default-room";
 
     if (owner && repo) {
-        fetchRepoTree(owner, repo).then(tree => {
+        fetchRepoTree(owner, repo).then(async tree => {
             const newFiles = {};
             let hasFiles = false;
+            
             // Add top 10 simple text-based files for immediate viewing
-            tree.filter(f => f.type === "blob" && typeof getLanguage(f.path) === "string" && getLanguage(f.path) !== "plaintext")
-                .slice(0, 10)
-                .forEach(f => {
-                    newFiles[f.path] = `// Content for ${f.path}\n// Loaded from GitHub API...`;
-                    hasFiles = true;
-                });
+            const textFiles = tree.filter(f => f.type === "blob" && typeof getLanguage(f.path) === "string" && getLanguage(f.path) !== "plaintext")
+                .slice(0, 10);
+                
+            textFiles.forEach(f => {
+                newFiles[f.path] = `// Loading ${f.path}...`;
+                hasFiles = true;
+            });
+            
             if (hasFiles) {
                 setFiles(newFiles);
-                setActiveFile(Object.keys(newFiles)[0]);
+                setActiveFile(textFiles[0].path);
+                
+                // Fetch actual contents
+                textFiles.forEach(async f => {
+                    try {
+                        const content = await fetchFileContent(owner, repo, f.path);
+                        setFiles(prev => ({ ...prev, [f.path]: content }));
+                    } catch (err) {
+                        setFiles(prev => ({ ...prev, [f.path]: `// Failed to load ${f.path}\n// ${err.message}` }));
+                    }
+                });
             }
         }).catch(err => console.error("Could not fetch repo tree", err));
     }

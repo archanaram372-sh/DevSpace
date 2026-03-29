@@ -35,7 +35,7 @@
   --task-card-bg: #f3f4f6;
 }
 
-//* --- FIXED LAYOUT ENGINE --- */
+/* --- FIXED LAYOUT ENGINE --- */
 .workspace-container {
   height: 100vh;
   display: flex;
@@ -395,6 +395,32 @@
   position: relative;
   display: flex;
   align-items: center;
+}
+
+.task-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gmeet-schedule-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.gmeet-schedule-btn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
 }
 
 .search-icon {
